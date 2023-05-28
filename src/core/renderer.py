@@ -209,8 +209,10 @@ class Renderer:
             plt.plot(ts, transient_signal_histogram[:, 1], label="1")
             plt.plot(ts, transient_signal_histogram[:, 2], label="2")
             plt.plot(ts, transient_signal_histogram[:, 3], label="3")
-            plt.ylabel('')
-            plt.legend()
+            plt.xlabel('time')
+            plt.ylabel('intensity')
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            plt.legend(title="Bounce number")
             plt.show()
 
         # Summarize Result
