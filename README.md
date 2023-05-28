@@ -5,8 +5,7 @@ This repository is the official data generation code for "Neural Volumetric Reco
 
 Please also check main code for paper at [here](https://github.com/awreed/Neural-Volumetric-Reconstruction-for-Coherent-SAS).
 
-![teasure](assets/radiance.png)
-![teasure](assets/transient.png)
+![teasure](assets/teaser.png)
 
 
 ## Scene Formatting
