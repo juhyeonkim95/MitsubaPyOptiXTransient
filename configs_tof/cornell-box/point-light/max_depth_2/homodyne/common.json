@@ -1,4 +1,4 @@
 {
-  "max_depth": 2,
+  "homodyne": true,
   "include": "../common.json"
 }

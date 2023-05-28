@@ -12,3 +12,4 @@ src/test_utils_multiprocessing.py
 src/test_utils_multiprocessing_queued.py
 src/libquadtree_updater.so
 /src/miscellenous/
+*.npy

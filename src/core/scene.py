@@ -12,19 +12,51 @@ from core.shapes.objmesh import OBJMesh, InstancedShape, Shape
 from itertools import chain
 from core.textures.texture import *
 from core.emitters.envmap import EnvironmentMap
+from pathlib import Path
 
 
-def add_transform(transformation_matrix, geometry_instance):
-    if transformation_matrix is None:
-        transformation_matrix = np.eye(4, dtype=np.float32)
-    else:
-        transformation_matrix = np.array(transformation_matrix.transpose(), dtype=np.float32)
+def add_transform(transformation, geometry_instance):
+    if transformation is None:
+        transformation = np.eye(4, dtype=np.float32)
+    elif isinstance(transformation, dict):
+        return add_animation(transformation, geometry_instance)
+
+    geometry_instance['velocity'] = np.array([0, 0, 0], dtype=np.float32)
 
     gg = GeometryGroup(children=[geometry_instance])
     gg.set_acceleration(Acceleration("Trbvh"))
 
     transform = Transform(children=[gg])
-    transform.set_matrix(False, transformation_matrix)
+    transform.set_matrix(False, transformation.transpose())
+    transform.add_child(gg)
+    return transform
+
+
+def add_animation(animation, geometry_instance):
+    matrices_full = []
+    matrices = []
+    times = []
+    for keyframe_time, matrix in animation.items():
+        matrices_full.append(matrix)
+        matrices.append(matrix.transpose()[0:3, :])
+        times.append(float(keyframe_time))
+
+    p1 = matrices_full[0] * Vector3([0, 0, 0])
+    p2 = matrices_full[1] * Vector3([0, 0, 0])
+    velocity = (p1 - p2) / (times[0] - times[1])
+    print("Velocity", velocity)
+
+    geometry_instance['velocity'] = np.array(velocity, dtype=np.float32)
+
+    gg = GeometryGroup(children=[geometry_instance])
+    gg.set_acceleration(Acceleration("Trbvh"))
+
+    transform = Transform(children=[gg])
+    transform.set_motion_range(0, 1)
+    transform.set_motion_border_mode("clamp", "clamp")
+    print(matrices)
+    transform.set_motion_keys(len(matrices), "matrix", [matrices[0], matrices[1]])
+
     transform.add_child(gg)
     return transform
 
@@ -34,6 +66,7 @@ class Scene:
         self.name = name
 
         self.camera = None
+        self.sensor_node = None
 
         # name list (need to be virtually loaded after)
         self.texture_name_list = []
@@ -68,6 +101,20 @@ class Scene:
         """
         doc = ET.parse(file_name)
         root = doc.getroot()
+        include_file = load_value(root, "include_file", None)
+
+        if include_file is not None:
+            path = Path(file_name)
+            parent_path = path.parent
+            include_file = os.path.join(parent_path, include_file)
+            include_tree = ET.parse(include_file)
+            include_root = include_tree.getroot()
+            for elem in include_root:
+                if elem.tag == "default":
+                    root.insert(0, elem)
+                else:
+                    root.append(elem)
+            root.remove(root.find('*[@name="%s"]' % "include_file"))
 
         scene_load_logger = load_logger('Scene config loader')
         shape_load_logger = load_logger('Shape config loader')
@@ -84,7 +131,9 @@ class Scene:
         scene_load_logger.info("[Size] : %dx%d" % (self.width, self.height))
 
         # 1. load camera
+        self.sensor_node = root.find("sensor")
         self.camera = load_camera(root.find("sensor"))
+
         # print log
         scene_load_logger.info("1. Camera Loaded")
         scene_load_logger.info(str(self.camera))
@@ -311,7 +360,17 @@ class Scene:
             geometry_instance['programId'] = bsdf_type
 
             if isinstance(shape, InstancedShape):
-                bbox = get_bbox_transformed(bbox, np.array(shape.transform.transpose(), dtype=np.float32))
+                if isinstance(shape.transform, Matrix44):
+                    bbox = get_bbox_transformed(bbox, np.array(shape.transform.transpose(), dtype=np.float32))
+                else:
+                    merged_bbox = None
+                    for keyframe_time, transform in shape.transform.items():
+                        ith_frame_bbox = get_bbox_transformed(bbox, np.array(transform.transpose(), dtype=np.float32))
+                        if merged_bbox is None:
+                            merged_bbox = ith_frame_bbox
+                        else:
+                            merged_bbox = get_bbox_merged(merged_bbox, ith_frame_bbox)
+                    bbox = merged_bbox
 
             # merge bbox
             self.bbox = get_bbox_merged(self.bbox, bbox)

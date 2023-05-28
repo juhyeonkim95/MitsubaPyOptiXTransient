@@ -1,15 +1,18 @@
-from core.shapes.shape import Shape
-from pyrr import Vector3
+from core.shapes.shape import Shape, InstancedShape
+from pyrr import Vector3, Matrix44
 from pyoptix import Geometry
 import numpy as np
 from core.utils.math_utils import BoundingBox
 
 
-class Rectangle(Shape):
+class Rectangle(InstancedShape):
     def __init__(self, props):
         from core.loader.loader_general import load_value
         super().__init__(props)
-        transform = load_value(props, "toWorld")
+        transform = load_value(props, "toWorld", Matrix44.identity())
+        if isinstance(transform, dict):
+            transform = transform["0"]
+
         self.anchor = transform * Vector3([-1, -1, 0], dtype=np.float32)
         self.offset1 = transform * Vector3([1, -1, 0], dtype=np.float32) - self.anchor
         self.offset2 = transform * Vector3([-1, 1, 0], dtype=np.float32) - self.anchor
@@ -35,10 +38,16 @@ class Rectangle(Shape):
         v1 = self.offset1 / np.dot(self.offset1, self.offset1)
         v2 = self.offset2 / np.dot(self.offset2, self.offset2)
 
-        parallelogram["plane"] = plane
-        parallelogram["anchor"] = self.anchor
-        parallelogram["v1"] = v1
-        parallelogram["v2"] = v2
+        #parallelogram["plane"] = plane
+        #parallelogram["anchor"] = self.anchor
+        #parallelogram["v1"] = v1
+        #parallelogram["v2"] = v2
+
+        parallelogram["plane"] = np.array([0, 0, 1, 0], dtype=np.float32)
+        parallelogram["anchor"] = np.array([-1, -1, 0], dtype=np.float32)
+        parallelogram["v1"] = np.array([0.5, 0, 0], dtype=np.float32)
+        parallelogram["v2"] = np.array([0, 0.5, 0], dtype=np.float32)
+
         return parallelogram
 
     def get_bbox(self) -> BoundingBox:

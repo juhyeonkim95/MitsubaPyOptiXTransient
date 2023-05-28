@@ -1,4 +1,4 @@
-from core.shapes.shape import Shape
+from core.shapes.shape import Shape, InstancedShape
 from pyrr import Vector3
 from pyoptix import Geometry
 import numpy as np
@@ -6,7 +6,7 @@ from core.utils.math_utils import BoundingBox
 import math
 
 
-class Disk(Shape):
+class Disk(InstancedShape):
     def __init__(self, props):
         super().__init__(props)
         from core.loader.loader_general import load_value
@@ -25,8 +25,8 @@ class Disk(Shape):
             intersection_program=Shape.program_dictionary["disk_it"]
         )
         disk.set_primitive_count(1)
-        disk["disk_pos_radii"] = np.append(self.center, self.radius).astype(np.float32)
-        disk["disk_normal"] = self.normal
+        disk["disk_pos_radii"] = np.array([0, 0, 0, 1], dtype=np.float32)# np.append(self.center, self.radius).astype(np.float32)
+        disk["disk_normal"] = np.array([0, 1, 0], dtype=np.float32)#self.normal
         return disk
 
     def get_bbox(self) -> BoundingBox:

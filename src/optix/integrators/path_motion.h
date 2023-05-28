@@ -2,7 +2,7 @@
 
 using namespace optix;
 
-namespace path{
+namespace path_motion{
 RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
 {
     float emission_weight = 1.0;
@@ -14,7 +14,10 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
     SurfaceInteraction si;
     si.emission = make_float3(0);
     si.is_valid = true;
-    rtTrace(top_object, ray, si);
+
+    const float current_time = rnd(seed);
+
+    rtTrace(top_object, ray, current_time, si);
 #if USE_NEXT_EVENT_ESTIMATION
     int num_lights = sysLightParameters.size();
     float num_lights_inv = 1.0 / (float) (num_lights);
@@ -72,7 +75,7 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
         prd_shadow.inShadow = false;
         prd_shadow.seed = seed;
         optix::Ray shadowRay = optix::make_Ray(si.p, wo, 1, scene_epsilon, lightDist - scene_epsilon);
-        rtTrace(top_shadower, shadowRay, prd_shadow);
+        rtTrace(top_shadower, shadowRay, current_time, prd_shadow);
         seed = prd_shadow.seed;
 
         if (!prd_shadow.inShadow)
@@ -107,7 +110,7 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
         // clear emission & trace again
         si.emission = make_float3(0.0);
         si.seed = seed;
-        rtTrace(top_object, ray, si);
+        rtTrace(top_object, ray, current_time, si);
         seed = si.seed;
 
 #if USE_NEXT_EVENT_ESTIMATION

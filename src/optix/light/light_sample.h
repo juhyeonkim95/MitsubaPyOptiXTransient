@@ -112,6 +112,8 @@ RT_FUNCTION void sample_light_area(const float3 &pos, const LightParameter &ligh
 	sample.wi = lightDir;
     sample.pdf = lightPdf;
     sample.lightDist = lightDist;
+    sample.n = areaSample.normal;
+    sample.p = areaSample.position;
 }
 
 RT_CALLABLE_PROGRAM void sample_light_point(const float3 &pos, const LightParameter &light, unsigned int &seed, LightSample &sample)
@@ -124,6 +126,7 @@ RT_CALLABLE_PROGRAM void sample_light_point(const float3 &pos, const LightParame
 	sample.wi = lightDir;
     sample.pdf = 1.0f;
     sample.lightDist = lightDist;
+    sample.p = light.position;
 }
 
 RT_CALLABLE_PROGRAM void sample_light_spot(const float3 &pos, const LightParameter &light, unsigned int &seed, LightSample &sample)
@@ -152,6 +155,7 @@ RT_CALLABLE_PROGRAM void sample_light_spot(const float3 &pos, const LightParamet
 	sample.wi = lightDir;
     sample.pdf = 1.0f;
     sample.lightDist = lightDist;
+    sample.p = light.position;
 }
 
 RT_CALLABLE_PROGRAM void sample_light_direction(const float3 &pos, const LightParameter &light, unsigned int &seed, LightSample &sample)

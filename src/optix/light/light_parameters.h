@@ -45,6 +45,8 @@ struct LightSample
 	float pdf;
 	optix::float3 Li;
 	float lightDist;
+	optix::float3 n;
+	optix::float3 p;
 };
 
 struct AreaSample

@@ -1,11 +1,11 @@
 {
   "scene_name": "bunny",
-  "scene_file_path": "../scenes/bunny/scene.xml",
+  "scene_file_path": "../scenes/bunny/scene_0.2.xml",
   "scale": 1,
   "max_depth": 4,
   "rr_begin_depth": 8,
-  "spp": 1024,
+  "spp": 64,
   "use_next_event_estimation": true,
-  "show_picture": false,
+  "show_picture": true,
   "sampling_strategy": "brdf"
 }

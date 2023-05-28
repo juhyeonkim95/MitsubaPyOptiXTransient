@@ -43,6 +43,15 @@ def load_vector(node, key=None, default=0) -> Vector3:
         return Vector3(str2floatarray(node.attrib[key]))
 
 
+def load_animation(animation_node):
+    animation = {}
+    for transform_node in animation_node.findall("transform"):
+        time = transform_node.attrib["time"]
+        transform = load_transform(transform_node)
+        animation[time] = transform
+    return animation
+
+
 def load_transform(transform_node) -> Matrix44:
     """
     Load 4x4 transformation matrix from transform node
@@ -63,6 +72,7 @@ def load_transform(transform_node) -> Matrix44:
         elif tag == "scale":
             if node.attrib["value"] is not None:
                 scale = load_float(node, "value")
+                scale = Vector3([scale, scale, scale], dtype=np.float32)
             else:
                 scale = load_vector(node, key=None, default=1)
             current_transform = Matrix44.from_scale(scale)

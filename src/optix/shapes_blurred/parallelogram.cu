@@ -36,12 +36,15 @@ rtDeclareVariable(float3, v1, , );
 rtDeclareVariable(float3, v2, , );
 rtDeclareVariable(float3, anchor, , );
 rtDeclareVariable(int, lgt_instance, , ) = {0};
+rtDeclareVariable(float3, velocity, , );
+rtDeclareVariable(float, max_time, , );
 
 rtDeclareVariable(float3, texcoord, attribute texcoord, ); 
 rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, ); 
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, ); 
 rtDeclareVariable(int, lgt_idx, attribute lgt_idx, ); 
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
+rtDeclareVariable(float, cur_time, rtCurrentTime, );
 rtDeclareVariable(int, hitTriIdx,  attribute hitTriIdx, );
 rtDeclareVariable(float3, back_hit_point,   attribute back_hit_point, );
 rtDeclareVariable(float3, front_hit_point,  attribute front_hit_point, );
@@ -50,10 +53,13 @@ RT_PROGRAM void intersect(int primIdx)
 {
   float3 n = make_float3( plane );
   float dt = dot(ray.direction, n );
-  float t = (plane.w - dot(n, ray.origin))/dt;
+  float3 offset = velocity * cur_time;
+  float3 new_anchor = anchor + offset;
+
+  float t = (dot(new_anchor, n) - dot(n, ray.origin))/dt;
   if( t > ray.tmin && t < ray.tmax ) {
     float3 p = ray.origin + ray.direction * t;
-    float3 vi = p - anchor;
+    float3 vi = p - new_anchor;
     float a1 = dot(v1, vi);
     if(a1 >= 0 && a1 <= 1){
       float a2 = dot(v2, vi);
@@ -75,15 +81,18 @@ RT_PROGRAM void intersect(int primIdx)
   }
 }
 
-RT_PROGRAM void bounds (int, float result[6])
+RT_PROGRAM void bounds (int primIdx, int motionIdx, float result[6])
 {
   // v1 and v2 are scaled by 1./length^2.  Rescale back to normal for the bounds computation.
   const float3 tv1  = v1 / dot( v1, v1 );
   const float3 tv2  = v2 / dot( v2, v2 );
-  const float3 p00  = anchor;
-  const float3 p01  = anchor + tv1;
-  const float3 p10  = anchor + tv2;
-  const float3 p11  = anchor + tv1 + tv2;
+  const float3 offset = velocity * float(motionIdx) * max_time;
+  const float3 new_anchor = anchor + offset;
+
+  const float3 p00  = new_anchor;
+  const float3 p01  = new_anchor + tv1;
+  const float3 p10  = new_anchor + tv2;
+  const float3 p11  = new_anchor + tv1 + tv2;
   const float  area = length(cross(tv1, tv2));
   
   optix::Aabb* aabb = (optix::Aabb*)result;

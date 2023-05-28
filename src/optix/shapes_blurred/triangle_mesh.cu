@@ -50,6 +50,7 @@ rtBuffer<float2> texcoord_buffer;
 rtBuffer<int3>   index_buffer;
 rtBuffer<int>    material_buffer;
 
+
 rtDeclareVariable(float3, texcoord,         attribute texcoord, ); 
 rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, ); 
 rtDeclareVariable(float3, shading_normal,   attribute shading_normal, ); 
@@ -59,7 +60,11 @@ rtDeclareVariable(float3, front_hit_point,  attribute front_hit_point, );
 rtDeclareVariable(int, hitTriIdx,  attribute hitTriIdx, );
 
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
+rtDeclareVariable(float, cur_time, rtCurrentTime, );
 rtDeclareVariable(int,  faceNormals, , );
+
+rtDeclareVariable(float3, velocity, , );
+rtDeclareVariable(float, max_time, , );
 
 
 template<bool DO_REFINE>
@@ -67,10 +72,11 @@ static __device__
 void meshIntersect( int primIdx )
 {
   const int3 v_idx = index_buffer[primIdx];
+  float3 offset = velocity * cur_time;
 
-  const float3 p0 = vertex_buffer[ v_idx.x ];
-  const float3 p1 = vertex_buffer[ v_idx.y ];
-  const float3 p2 = vertex_buffer[ v_idx.z ];
+  const float3 p0 = vertex_buffer[ v_idx.x ] + offset;
+  const float3 p1 = vertex_buffer[ v_idx.y ] + offset;
+  const float3 p2 = vertex_buffer[ v_idx.z ] + offset;
 
   // Intersect ray with triangle
   float3 n;
@@ -126,13 +132,14 @@ RT_PROGRAM void mesh_intersect_refine( int primIdx )
 }
 
 
-RT_PROGRAM void mesh_bounds (int primIdx, float result[6])
+RT_PROGRAM void mesh_bounds (int primIdx, int motionIdx, float result[6])
 {
   const int3 v_idx = index_buffer[primIdx];
+  const float3 offset = velocity * float(motionIdx) * max_time;
 
-  const float3 v0   = vertex_buffer[ v_idx.x ];
-  const float3 v1   = vertex_buffer[ v_idx.y ];
-  const float3 v2   = vertex_buffer[ v_idx.z ];
+  const float3 v0   = vertex_buffer[ v_idx.x ] + offset;
+  const float3 v1   = vertex_buffer[ v_idx.y ] + offset;
+  const float3 v2   = vertex_buffer[ v_idx.z ] + offset;
   const float  area = length(cross(v1-v0, v2-v0));
 
   optix::Aabb* aabb = (optix::Aabb*)result;

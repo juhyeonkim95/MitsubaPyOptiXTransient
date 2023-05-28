@@ -32,17 +32,21 @@ using namespace optix;
 
 rtDeclareVariable(float4,  disk_pos_radii, , );
 rtDeclareVariable(float3,  disk_normal, , );
+rtDeclareVariable(float3, velocity, , );
+rtDeclareVariable(float, max_time, , );
 
 
 rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
 rtDeclareVariable(float3, shading_normal, attribute shading_normal, );
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
+rtDeclareVariable(float, cur_time, rtCurrentTime, );
 rtDeclareVariable(int, hitTriIdx,  attribute hitTriIdx, );
 
 
 RT_PROGRAM void intersect(int primIdx)
 {
-    float3 position = make_float3(disk_pos_radii);
+    float3 offset = velocity * cur_time;
+    float3 position = make_float3(disk_pos_radii) + offset;
     float radius = disk_pos_radii.w;
     float3 normal = disk_normal;
 
@@ -67,9 +71,10 @@ RT_PROGRAM void intersect(int primIdx)
     }
 }
 
-RT_PROGRAM void bounds (int, float result[6])
+RT_PROGRAM void bounds (int primIdx, int motionIdx, float result[6])
 {
-    float3 position = make_float3(disk_pos_radii);
+    const float3 offset = velocity * float(motionIdx) * max_time;
+    float3 position = make_float3(disk_pos_radii) + offset;
     float3 radius = make_float3(disk_pos_radii.w);
 
     optix::Aabb* aabb = (optix::Aabb*)result;

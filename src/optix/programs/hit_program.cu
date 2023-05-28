@@ -69,12 +69,13 @@ rtDeclareVariable(SurfaceInteraction, si, rtPayload, );
 
 rtBuffer<MaterialParameter> sysMaterialParameters;
 rtDeclareVariable(int, materialId, , );
+rtDeclareVariable(float3, velocity, , );
 
 RT_PROGRAM void closest_hit()
 {
     // Transform normal from object to world coordinate
 	const float3 world_shading_normal = normalize(rtTransformNormal(RT_OBJECT_TO_WORLD, shading_normal));
-	const float3 world_geometric_normal = normalize(rtTransformNormal( RT_OBJECT_TO_WORLD, geometric_normal ) );
+	const float3 world_geometric_normal = normalize(rtTransformNormal(RT_OBJECT_TO_WORLD, geometric_normal ) );
 
     // Face forwarding normal (ffnormal dot ray_direction > 0)
     float3 ff_normal = faceforward( world_shading_normal, -ray.direction, world_geometric_normal );
@@ -92,6 +93,8 @@ RT_PROGRAM void closest_hit()
 
     si.wi = to_local(onb, wi);
     si.p = ray.origin + t_hit * ray.direction;
+    si.t = t_hit;
+    si.velocity = velocity;
 }
 
 //RT_PROGRAM void closest_hit()

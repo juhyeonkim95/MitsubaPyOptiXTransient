@@ -1,3 +1,5 @@
+import copy
+
 from pyoptix import Context, Buffer
 from core.scene import Scene
 import time
@@ -10,6 +12,7 @@ from utils.logging_utils import *
 from utils.timing_utils import *
 import gc
 from core.optix_scene import OptiXSceneContext, update_optix_configs
+from core.loader.loader_general import load_camera
 
 
 class Renderer:
@@ -75,6 +78,20 @@ class Renderer:
             self.render_load_logger.info("Skipped loading scene because it has been already loaded")
             return False
 
+    def update_camera_and_emitter_position(self, camera_position, emitter_position):
+        sensor_node_original = self.scene.sensor_node
+
+        sensor_node_new = copy.deepcopy(sensor_node_original)
+        transform_node = sensor_node_new.find('*[@name="toWorld"]')
+        lookat_node = transform_node.find("lookat")
+        lookat_node.set("origin", ",".join(map(str, camera_position.tolist())))
+        new_camera = load_camera(sensor_node_new)
+        self.scene.camera = new_camera
+        self.optix_context.init_camera(self.scene)
+
+        self.scene.light_list[0].position = emitter_position
+        self.optix_context.load_scene_lights(self.scene)
+
     def render(
             self,
             scene_name="cornell-box",
@@ -99,236 +116,157 @@ class Renderer:
             no_exploration=False,
             convert_ldr=True,
             use_next_event_estimation=False,
+            print_all_result=False,
+            skip_all_steps=False,
             **kwargs
     ):
-        self.scale = kwargs.get("scale", 1)
-        sampling_strategy = key_value_to_int("sampling_strategy", sampling_strategy)
-        q_table_update_method = key_value_to_int("q_table_update_method", q_table_update_method)
+        if not skip_all_steps:
+            self.scale = kwargs.get("scale", 1)
+            sampling_strategy = key_value_to_int("sampling_strategy", sampling_strategy)
+            q_table_update_method = key_value_to_int("q_table_update_method", q_table_update_method)
 
-        # load scene info & init optix
-        update_optix_configs(
-            sampling_strategy=sampling_strategy,
-            q_table_update_method=q_table_update_method,
-            spatial_data_structure_type=kwargs.get("spatial_data_structure_type", "grid"),
-            directional_data_structure_type=kwargs.get("directional_data_structure_type", "grid"),
-            directional_mapping_method=directional_mapping_method,
-            use_next_event_estimation=use_next_event_estimation
-        )
-
-        optix_created = self.load_scene(scene_name, scene_file_path=scene_file_path)
-        if not optix_created:
-            self.optix_context.update_program()
-
-        # just for shorter name
-        context = self.context
-        scene = self.scene
-        width = self.width
-        height = self.height
-
-        # rendering related
-        context['rr_begin_depth'] = np.array(rr_begin_depth, dtype=np.uint32)
-        context['max_depth'] = np.array(max_depth, dtype=np.uint32)
-        context["bsdf_sampling_fraction"] = np.array(bsdf_sampling_fraction, dtype=np.float32)
-        context["sampling_strategy"] = np.array(sampling_strategy, dtype=np.uint32)
-        context["q_table_update_method"] = np.array(q_table_update_method, dtype=np.uint32)
-        context["accumulative_q_table_update"] = np.array(1 if accumulative_q_table_update else 0, dtype=np.uint32)
-
-        need_q_table_update = force_update_q_table or not ((sampling_strategy == SAMPLE_UNIFORM) or (sampling_strategy == SAMPLE_BRDF))
-
-        context["need_q_table_update"] = np.array(1 if need_q_table_update else 0, dtype=np.uint32)
-
-        room_size = scene.bbox.bbox_max - scene.bbox.bbox_min
-        context['scene_bbox_min'] = scene.bbox.bbox_min
-        context['scene_bbox_max'] = scene.bbox.bbox_max
-        context['scene_bbox_extent'] = room_size
-
-        self.reset_output_buffers(width, height)
-        QTable.register_empty_context(context)
-
-        q_table = None
-        if need_q_table_update:
-            q_table = QTable(
+            # load scene info & init optix
+            update_optix_configs(
+                sampling_strategy=sampling_strategy,
+                q_table_update_method=q_table_update_method,
+                spatial_data_structure_type=kwargs.get("spatial_data_structure_type", "grid"),
+                directional_data_structure_type=kwargs.get("directional_data_structure_type", "grid"),
                 directional_mapping_method=directional_mapping_method,
-                accumulative_q_table_update=accumulative_q_table_update, **kwargs
+                use_next_event_estimation=use_next_event_estimation
             )
-            q_table.register_to_context(context)
+
+            optix_created = self.load_scene(scene_name, scene_file_path=scene_file_path)
+            if not optix_created:
+                self.optix_context.update_program()
+
+            # just for shorter name
+            context = self.context
+            scene = self.scene
+            width = self.width
+            height = self.height
+
+            context['transient_dist_max'] = np.array(kwargs.get("transient_dist_max"), dtype=np.float32)
+            context['transient_dist_min'] = np.array(kwargs.get("transient_dist_min"), dtype=np.float32)
+            context['transient_bin_num'] = np.array(kwargs.get("transient_bin_num"), dtype=np.uint32)
+            context['transient_radiance_histogram'] = Buffer.empty((kwargs.get("transient_bin_num"), max_depth), dtype=np.float32, buffer_type='o', drop_last_dim=False)
+
+            # rendering related
+            context['rr_begin_depth'] = np.array(rr_begin_depth, dtype=np.uint32)
+            context['max_depth'] = np.array(max_depth, dtype=np.uint32)
+            context["bsdf_sampling_fraction"] = np.array(bsdf_sampling_fraction, dtype=np.float32)
+            context["sampling_strategy"] = np.array(sampling_strategy, dtype=np.uint32)
+            context["q_table_update_method"] = np.array(q_table_update_method, dtype=np.uint32)
+            context["accumulative_q_table_update"] = np.array(1 if accumulative_q_table_update else 0, dtype=np.uint32)
+
+            need_q_table_update = force_update_q_table or not ((sampling_strategy == SAMPLE_UNIFORM) or (sampling_strategy == SAMPLE_BRDF))
+
+            context["need_q_table_update"] = np.array(1 if need_q_table_update else 0, dtype=np.uint32)
+
+            room_size = scene.bbox.bbox_max - scene.bbox.bbox_min
+            context['scene_bbox_min'] = scene.bbox.bbox_min
+            context['scene_bbox_max'] = scene.bbox.bbox_max
+            context['scene_bbox_extent'] = room_size
+
+            self.reset_output_buffers(width, height)
+            QTable.register_empty_context(context)
+
+            q_table = None
+            if need_q_table_update:
+                q_table = QTable(
+                    directional_mapping_method=directional_mapping_method,
+                    accumulative_q_table_update=accumulative_q_table_update, **kwargs
+                )
+                q_table.register_to_context(context)
+
+            hit_sum = 0
+            list_hit_counts = []
+            output_images = []
+
+            is_budget_time = time_limit_in_sec > 0
+
+            context.validate()
+            context.compile()
+
+
+        else:
+            # just for shorter name
+            context = self.context
+            scene = self.scene
+            width = self.width
+            height = self.height
+            self.reset_output_buffers(width, height)
+            context['transient_radiance_histogram'] = Buffer.empty((kwargs.get("transient_bin_num"), max_depth), dtype=np.float32, buffer_type='o', drop_last_dim=False)
 
         current_samples_per_pass = samples_per_pass
         if samples_per_pass == -1:
             current_samples_per_pass = spp
 
-        hit_sum = 0
-        list_hit_counts = []
-        output_images = []
-
-        is_budget_time = time_limit_in_sec > 0
-
-        context.validate()
-        context.compile()
-
-        list_count_sample_per_pass = []
         list_time_optix_launch = []
-        list_time_q_table_update = []
-        need_to_save_intermediate_outputs = False
-
         left_samples = spp
         completed_samples = 0
         n_pass = 0
 
-        counter_sample_next_q_table_update = 0
-        counter_sample_exponential_update_size = 4
-        counter_q_table_update = 0
-
-        spatial_tree_size = []
-        directional_tree_sizes = []
-        if q_table is not None:
-            spatial_tree_size.append(q_table.spatial_data_structure.get_size())
-            directional_tree_sizes.append(q_table.directional_data_structure.get_avg_size())
-
-        main_render_loop_start_time = time.time()
         '''
         Main Render Loop
         '''
         try:
             with timeout(time_limit_in_sec):
                 while left_samples > 0:
-                    list_count_sample_per_pass.append(current_samples_per_pass)
                     context["samples_per_pass"] = np.array(current_samples_per_pass, dtype=np.uint32)
-                    self.render_logger.debug(
-                        "Current Pass: %d, Current Samples: %d" % (n_pass, current_samples_per_pass))
-
-                    if (not no_exploration) and sampling_strategy != SAMPLE_MIS:
-                        epsilon = getEpsilon(completed_samples, 100000, t=1, k=100)
-                        epsilon = max(epsilon, min_epsilon)
-                    else:
-                        epsilon = 0.0
-
                     context["completed_sample_number"] = np.array(completed_samples, dtype=np.uint32)
-                    if n_pass == 0 and need_q_table_update:
-                        context['bsdf_sampling_fraction'] = np.array(1, dtype=np.float32)
-                        print("Force First BSDF sampling!!")
-                    else:
-                        context['bsdf_sampling_fraction'] = np.array(bsdf_sampling_fraction, dtype=np.float32)
 
                     # Run OptiX program
                     with record_elapsed_time("OptiX Launch", list_time_optix_launch, self.render_logger):
                         context.launch(0, width, height)
 
-                    # Update/refine radiance record if needed
-                    if need_q_table_update and completed_samples >= counter_sample_next_q_table_update:
-                        with record_elapsed_time("Q table update time", list_time_q_table_update, self.render_logger, debug=False):
-                            q_table.update_pdf(context, k=counter_q_table_update, epsilon=epsilon, **kwargs)
-                        spatial_tree_size.append(q_table.spatial_data_structure.get_size())
-                        directional_tree_sizes.append(q_table.directional_data_structure.get_avg_size())
-
-                        if learning_method == "exponential":
-                            counter_sample_exponential_update_size *= 2
-                            counter_sample_next_q_table_update += counter_sample_exponential_update_size
-                        else:
-                            counter_sample_next_q_table_update += samples_per_pass
-                        counter_q_table_update += 1
-
-                    np_hit_count = context['hit_count_buffer'].to_array()
-                    hit_new_sum = np.sum(np_hit_count)
-
-                    if n_pass > 0:
-                        hit = hit_new_sum - hit_sum
-                    else:
-                        hit = hit_new_sum
-                    list_hit_counts.append(hit)
-
-                    hit_sum = hit_new_sum
-
                     completed_samples += current_samples_per_pass
 
-                    if need_to_save_intermediate_outputs:
-                        output_image = self.context['output_buffer'].to_array()
-                        output_images.append(output_image / completed_samples)
-
-                    if not is_budget_time:
-                        # update next pass
-                        left_samples -= current_samples_per_pass
-                        current_samples_per_pass = samples_per_pass
-                        current_samples_per_pass = min(current_samples_per_pass, left_samples)
+                    # update next pass
+                    left_samples -= current_samples_per_pass
+                    current_samples_per_pass = samples_per_pass
+                    current_samples_per_pass = min(current_samples_per_pass, left_samples)
                     n_pass += 1
+
         except TimeoutError:
             self.render_logger.info("%f sec is over" % time_limit_in_sec)
 
-        main_render_loop_end_time = time.time()
-        total_render_elapsed_time = main_render_loop_end_time - main_render_loop_start_time
-
-        # (0) Image
-        final_raw_image = self.context['output_buffer'].to_array()
-        final_raw_image = final_raw_image / completed_samples
-        final_raw_image = np.flipud(final_raw_image)
-        hdr_image = final_raw_image[:, :, 0:3]
-        ldr_image = LinearToSrgb(ToneMap(hdr_image, 1.5))
-        final_image = ldr_image if convert_ldr else hdr_image
+        # histogram
+        final_histogram = self.context['transient_radiance_histogram'].to_array()
+        final_histogram /= (completed_samples * width * height)
 
         if show_picture:
+            transient_dist_min = kwargs.get("transient_dist_min", 10)
+            transient_dist_max = kwargs.get("transient_dist_max", 10)
+            transient_bin_num = kwargs.get("transient_bin_num", 10)
+            print(transient_dist_min)
+            print(transient_dist_max)
+            print(transient_bin_num)
+            
+            ts = np.linspace(transient_dist_min, transient_dist_max, transient_bin_num)
+
+            # (0) Image
+            final_raw_image = self.context['output_buffer'].to_array()
+            final_raw_image = final_raw_image / completed_samples
+            final_raw_image = np.flipud(final_raw_image)
+            hdr_image = final_raw_image[:, :, 0:3]
+            ldr_image = LinearToSrgb(ToneMap(hdr_image, 1.5))
+            final_image = ldr_image if convert_ldr else hdr_image
+
             plt.imshow(final_image)
             plt.show()
+            print(ts.shape, "TS SHAPE!!")
 
-        # (1) Error with reference image
-        error_mean = 1.0
-        if self.reference_image is not None and self.reference_image.shape == final_image.shape:
-            error = np.abs(final_image - self.reference_image)
-            error_mean = np.mean(error)
-
-        # (2) Hit count sequences (how many paths reached the light source?)
-        np_hit_count = context['hit_count_buffer'].to_array()
-        total_hit_count = np.sum(np_hit_count)
-        total_hit_percentage = total_hit_count / ((width * height) * completed_samples)
-        list_hit_rates = [t / (n * width * height) for t, n in zip(list_hit_counts, list_count_sample_per_pass)]
-
-        # (3) execution time
-        list_time_optix_launch_per_sample = [t / n for t, n in zip(list_time_optix_launch,
-                                                                             list_count_sample_per_pass)]
-        average_time_optix_launch_per_sample = \
-            np.mean(np.asarray(list_time_optix_launch_per_sample))
-        average_time_optix_launch_per_sample_except_init = \
-            np.mean(np.asarray(list_time_optix_launch_per_sample[1:-1]))
-
-        if len(list_time_q_table_update) == 0:
-            list_time_q_table_update.append(0)
+            # plt.plot(final_histogram[:, 0], label="1")
+            plt.plot(ts, final_histogram[:, 1], label="1")
+            plt.plot(ts, final_histogram[:, 2], label="2")
+            plt.plot(ts, final_histogram[:, 3], label="3")
+            plt.ylabel('')
+            plt.legend()
+            plt.show()
 
         # Summarize Result
 
         results = dict()
-
-        # image
-        results["image"] = final_image
-
-        # sequence
-        results["hit_rate_per_pass"] = list_hit_rates
-        results["elapsed_time_per_sample_per_pass"] = list_time_optix_launch_per_sample[1:-1]
-        results["q_table_update_times"] = list_time_q_table_update
-        results["spatial_tree_size"] = spatial_tree_size
-        results["directional_tree_sizes"] = directional_tree_sizes
-        results["total_node_counts"] = [t * n for t, n in zip(spatial_tree_size, directional_tree_sizes)]
-
-        # scalar
-        # (1) Time
-        #  - per sample
-        results["elapsed_time_per_sample_except_init"] = average_time_optix_launch_per_sample_except_init
-        results["elapsed_time_per_sample"] = average_time_optix_launch_per_sample
-        #  - total
-        results["total_elapsed_time"] = total_render_elapsed_time
-        results["total_q_table_update_time"] = np.sum(np.asarray(list_time_q_table_update))
-        results["total_optix_launch_time"] = np.sum(np.asarray(list_time_optix_launch))
-
-        # (2) others
-        results["error_mean"] = error_mean
-        results["total_hit_percentage"] = total_hit_percentage
-        results["completed_samples"] = completed_samples
-
-        if need_q_table_update:
-            results["q_table_info"] = q_table
-
-        self.render_logger.info("[Rendering complete]")
-        for key, v in results.items():
-            if key == "image":
-                continue
-            self.render_logger.info("\t -%s : %s" % (str(key), str(v)))
+        results["transient_histogram"] = final_histogram
 
         return results

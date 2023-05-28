@@ -22,13 +22,26 @@ def convert_image_to_uint(image):
     return x
 
 
-def save_pred_images(images, file_path):
-    x = convert_image_to_uint(images)
+def save_image(image, file_path):
+    x = convert_image_to_uint(image)
     new_im = Image.fromarray(x)
     dirname = os.path.dirname(file_path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    new_im.save("%s.png" % file_path)
+    if file_path.endswith(".png"):
+        new_im.save("%s" % file_path)
+    else:
+        new_im.save("%s.png" % file_path)
+
+
+def save_image_numpy(image, file_path):
+    dirname = os.path.dirname(file_path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    if file_path.endswith(".npy"):
+        np.save("%s" % file_path, image)
+    else:
+        np.save("%s.npy" % file_path, image)
 
 
 def load_reference_image(parent_folder, name):

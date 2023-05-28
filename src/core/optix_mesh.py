@@ -35,7 +35,10 @@ class OptixMesh:
                 if w_tuple not in index_dictionary:
                     index_dictionary[w_tuple] = len(index_dictionary)
                     vertices_reordered.append(vertices[int(w[0]) - 1])
-                    textures_reordered.append(textures[int(w[1]) - 1])
+                    if(len(textures) > 0):
+                        textures_reordered.append(textures[int(w[1]) - 1])
+                    else:
+                        textures_reordered.append([1, 1])
                     normals_reordered.append(normals[int(w[2]) - 1])
                 index = index_dictionary[w_tuple]
                 tri_indices.append(index)

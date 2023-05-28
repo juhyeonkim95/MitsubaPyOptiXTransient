@@ -2,22 +2,41 @@
 
 using namespace optix;
 
-namespace path_motion{
+// path tracer
+rtDeclareVariable(float,         tof_path_w_g_mhz, , );
+rtDeclareVariable(float,         tof_path_w_f_mhz, , );
+rtDeclareVariable(float,         tof_path_w_g_w_f_difference_hz, , );
+rtDeclareVariable(float,         tof_path_exposure_time, , );
+
+namespace tof_path{
+
+RT_FUNCTION float eval_modulation_weight(float ray_time, float path_length) {
+    //const float m_illumination_modulation_frequency_mhz = 30;
+    //const float m_sensor_modulation_frequency_mhz = 30;
+    //float w_g = 2 * M_PIf * m_illumination_modulation_frequency_mhz * 1e6;
+    //float w_f = 2 * M_PIf * m_sensor_modulation_frequency_mhz * 1e6;
+    //float w_delta = 2 * M_PIf * 1.0 / tof_path_exposure_time;
+    float phi = (2 * M_PIf * tof_path_w_g_mhz) / 300 * path_length;
+    float fg_t = 0.25 * cosf(2 * M_PIf * tof_path_w_g_w_f_difference_hz * ray_time + phi);
+    return fg_t;
+}
+
 RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
 {
     float emission_weight = 1.0;
     float3 throughput = make_float3(1.0);
     float3 result = make_float3(0.0);
     BSDFSample3f bs;
+    float path_length = 0;
 
     // ---------------------- First intersection ----------------------
     SurfaceInteraction si;
     si.emission = make_float3(0);
     si.is_valid = true;
 
-    const float current_time = rnd(seed);
-
+    const float current_time = rnd(seed) * tof_path_exposure_time;
     rtTrace(top_object, ray, current_time, si);
+    path_length += si.t;
 #if USE_NEXT_EVENT_ESTIMATION
     int num_lights = sysLightParameters.size();
     float num_lights_inv = 1.0 / (float) (num_lights);
@@ -82,7 +101,6 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
         {
             float scatterPdf = bsdf::Pdf(mat, si, wo_local);
             float3 f = bsdf::Eval(mat, si, wo_local);
-
             // Delta light
             if(is_light_delta){
                 L = Li * f / lightPdf;
@@ -90,6 +108,9 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
                 float weight = powerHeuristic(lightPdf, scatterPdf);    // MIS
                 L =  weight * Li * f / lightPdf;
             }
+            float em_path_length = path_length + lightDist;
+            float path_length_weight = eval_modulation_weight(current_time, em_path_length);
+            L *= path_length_weight;
             // L *= float(num_lights);
         }
 
@@ -112,6 +133,7 @@ RT_FUNCTION void path_trace(Ray& ray, unsigned int& seed, PerPathData &ppd)
         si.seed = seed;
         rtTrace(top_object, ray, current_time, si);
         seed = si.seed;
+        path_length += si.t;
 
 #if USE_NEXT_EVENT_ESTIMATION
         /* Determine probability of having sampled that same

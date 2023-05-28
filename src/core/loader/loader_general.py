@@ -34,6 +34,8 @@ def load_value(node, name, default=None, key="value"):
             return load_vector(child_node, default=0)
         elif tag == "transform":
             return load_transform(child_node)
+        elif tag == "animation":
+            return load_animation(child_node)
         # Shape
         elif tag == "shape":
             return load_single_shape(child_node)

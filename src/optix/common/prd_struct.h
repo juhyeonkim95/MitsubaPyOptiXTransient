@@ -143,4 +143,7 @@ struct SurfaceInteraction
     int hitTriIdx;
     float t;
     unsigned int seed;
+    float3 velocity;
+
+    rtObject object;
 };

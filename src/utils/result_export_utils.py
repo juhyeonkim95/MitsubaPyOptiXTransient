@@ -46,7 +46,7 @@ def export_total_results(total_results, scene_output_folder):
     if not os.path.exists(scene_output_folder):
         os.makedirs(scene_output_folder)
     for k, v in total_results.items():
-        save_pred_images(v['image'], "%s/images/%s" % (scene_output_folder, k))
+        save_image(v['image'], "%s/images/%s" % (scene_output_folder, k))
 
     # export csv
     df = pd.DataFrame(total_results)

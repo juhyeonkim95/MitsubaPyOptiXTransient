@@ -42,7 +42,7 @@
 	</shape>
 	<shape type="rectangle">
 		<transform name="toWorld">
-			<scale value="0.1" />
+			<scale value="0.2" />
 		</transform>
 		<ref id="box"/>
 	</shape>

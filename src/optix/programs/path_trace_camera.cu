@@ -40,6 +40,11 @@
 //#include "optix/integrators/guided_path_sarsa.h"
 #include "optix/integrators/guided_path.h"
 #include "optix/integrators/path.h"
+#include "optix/integrators/path_motion.h"
+#include "optix/integrators/path_transient.h"
+// #include "optix/integrators/tof_path.h"
+#include "optix/integrators/tof_path_analytic.h"
+
 //#endif
 
 
@@ -111,8 +116,12 @@ RT_PROGRAM void pathtrace_camera()
         // Each iteration is a segment of the ray path.  The closest hit will
         // return new segments to be traced here.
         PerPathData ppd;
+
     #if SAMPLING_STRATEGY == SAMPLE_BRDF
-        path::path_trace(ray, seed, ppd);
+        path_transient::path_trace(ray, seed, ppd);
+        // tof_path::path_trace(ray, seed, ppd);
+        // path_motion::path_trace(ray, seed, ppd);
+        // path::path_trace(ray, seed, ppd);
     #else
         guided_path::path_trace(ray, seed, ppd);
     #endif

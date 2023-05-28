@@ -61,7 +61,7 @@ RT_CALLABLE_PROGRAM void Sample(
     if (wiDotM <= 0.0f || wo.z <= 0.0f)
         return;
 
-    float G = microfacet::G(dist, alpha, wi, bs.wo, m);
+    float G = microfacet::G(dist, alpha, wi, wo, m);
     float D = microfacet::D(dist, alpha, m);
     float mPdf = microfacet::pdf(dist, sampleAlpha, m);
     float pdf = mPdf * 0.25f / wiDotM;

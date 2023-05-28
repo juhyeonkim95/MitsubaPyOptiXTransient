@@ -1,0 +1,11 @@
+{
+  "scene_name": "armadilo",
+  "scene_file_path": "../scenes/armadilo/scene_0.4.xml",
+  "scale": 1,
+  "max_depth": 4,
+  "rr_begin_depth": 8,
+  "spp": 64,
+  "use_next_event_estimation": true,
+  "show_picture": true,
+  "sampling_strategy": "brdf"
+}

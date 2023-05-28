@@ -1,7 +1,7 @@
 from pyoptix import Geometry
 import numpy as np
 from core.utils.math_utils import *
-from pyrr import Vector3, matrix44
+from pyrr import Vector3, Matrix44
 
 
 class Shape:
@@ -36,7 +36,7 @@ class InstancedShape(Shape):
     def __init__(self, props):
         from core.loader.loader_general import load_value
         super().__init__(props)
-        self.transform = load_value(props, "toWorld")
+        self.transform = load_value(props, "toWorld", Matrix44.identity())
 
     def to_optix_geometry(self) -> Geometry:
         pass
