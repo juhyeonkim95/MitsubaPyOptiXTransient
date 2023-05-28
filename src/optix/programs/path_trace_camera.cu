@@ -33,20 +33,8 @@
 #include "optix/common/rt_function.h"
 #include "optix/cameras/camera.h"
 #include "optix/app_config.h"
-
-//#if SAMPLING_STRATEGY == SAMPLING_STRATEGY_BSDF
-//#include "optix/integrators/path.h"
-//#elif SAMPLING_STRATEGY == SAMPLING_STRATEGY_SD_TREE
-//#include "optix/integrators/guided_path_sarsa.h"
-#include "optix/integrators/guided_path.h"
 #include "optix/integrators/path.h"
-#include "optix/integrators/path_motion.h"
 #include "optix/integrators/path_transient.h"
-// #include "optix/integrators/tof_path.h"
-#include "optix/integrators/tof_path_analytic.h"
-
-//#endif
-
 
 using namespace optix;
 
@@ -67,22 +55,6 @@ rtDeclareVariable(unsigned int,  samples_per_pass, , );
 
 
 rtBuffer<float4, 2>              output_buffer;
-rtBuffer<float4, 2>              output_buffer2;
-
-rtBuffer<unsigned int, 2>               hit_count_buffer;
-rtBuffer<unsigned int, 2>               path_length_buffer;
-rtBuffer<float2, 2>               scatter_type_buffer;
-
-//rtDeclareVariable(unsigned int,  scatter_sample_type, , );
-rtDeclareVariable(unsigned int,  need_q_table_update, , );
-rtDeclareVariable(unsigned int,  q_table_update_method, , );
-
-//rtDeclareVariable(unsigned int,     use_mis, , );
-//rtDeclareVariable(unsigned int,     use_soft_q_update, , );
-//rtDeclareVariable(unsigned int,     construct_stree, , );
-//rtBuffer<float3, 3>              point_buffer;
-//rtDeclareVariable(unsigned int,     sampling_strategy, , );
-
 
 RT_PROGRAM void pathtrace_camera()
 {
@@ -117,29 +89,13 @@ RT_PROGRAM void pathtrace_camera()
         // return new segments to be traced here.
         PerPathData ppd;
 
-    #if SAMPLING_STRATEGY == SAMPLE_BRDF
         path_transient::path_trace(ray, seed, ppd);
-        // tof_path::path_trace(ray, seed, ppd);
-        // path_motion::path_trace(ray, seed, ppd);
         // path::path_trace(ray, seed, ppd);
-    #else
-        guided_path::path_trace(ray, seed, ppd);
-    #endif
-//    #if Q_UPDATE_METHOD == Q_UPDATE_SARSA
-//        guided_path_sarsa::path_trace(ray, seed, ppd);
-//    #elif Q_UPDATE_METHOD == Q_UPDATE_MONTE_CARLO
-//        guided_path_mc::path_trace(ray, seed, ppd);
-//    #endif
-//    #endif
         result += ppd.result;
         hit_count += dot(ppd.result, ppd.result) > 0 ? 1 : 0;
-        // seed = prd.seed;
-        // float hit_count = (prd.done && !prd.isMissed) ? 1.0 : 0.0;
-        // float hit_count = (prd.done && (length(prd.result) > 0))  ? 1.0 : 0.0;
     } while (--left_samples_pass);
 
     output_buffer[launch_index] += make_float4(result, 1.0);
-    hit_count_buffer[launch_index] += hit_count;
 }
 
 

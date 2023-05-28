@@ -1,0 +1,21 @@
+{
+  "scene_name": "bunny",
+  "scene_file_path": "../scenes/bunny/scene_0.4.xml",
+  "scale": 1,
+  "max_depth": 4,
+  "rr_begin_depth": 8,
+  "spp": 64,
+  "use_next_event_estimation": true,
+  "show_picture": true,
+  "sampling_strategy": "brdf",
+  "tMin": 0.748591648507111,
+  "tMax": 3.2254985776688887,
+  "nBin": 14360,
+  "tx_x": 0.0,
+  "tx_y":-0.8485,
+  "tx_z": 0.1125,
+  "rx_x": 0.0,
+  "rx_y": -0.8615,
+  "rx_z": 0.0745,
+  "output_file_name": "bunny"
+}

@@ -33,7 +33,8 @@ if __name__ == "__main__":
 	rx_xs = []
 	rx_ys = []
 	rx_zs = []
-	tmin = 0
+
+	tmin = config.get("tmin")
 	tmax = 0
 	tres = 0
 
@@ -85,11 +86,11 @@ if __name__ == "__main__":
 		"transient_bin_num": nbin
 	}
 
-	result = renderer.render(**config, **transient_configs)
+	renderer.init(**config, **transient_configs)
 
 	for i in tqdm(range(N)):
 		renderer.update_camera_and_emitter_position(rx_coords[i, :], tx_coords[i, :])
-		result = renderer.render(**config, **transient_configs, skip_all_steps=True)
+		result = renderer.render(**config, **transient_configs)
 		transient_histogram = result["transient_histogram"]
 		histograms[i, :, :] = transient_histogram
 

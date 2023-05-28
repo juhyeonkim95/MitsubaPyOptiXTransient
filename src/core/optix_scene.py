@@ -6,32 +6,6 @@ from core.bsdfs.bsdf import BSDF
 from core.emitters.emitter import Emitter
 from core.renderer_constants import *
 
-
-def update_optix_configs(config_file_path="optix/app_config.h", **kwargs):
-    with open(config_file_path, "r") as f:
-        list_of_lines = f.readlines()
-
-    def change_to_int(key):
-        return key_value_to_int(key, kwargs.get(key))
-
-    for i in range(len(list_of_lines)):
-        if list_of_lines[i].startswith("#define SAMPLING_STRATEGY "):
-            list_of_lines[i] = "#define SAMPLING_STRATEGY %d\n" % change_to_int("sampling_strategy")
-        if list_of_lines[i].startswith("#define Q_UPDATE_METHOD "):
-            list_of_lines[i] = "#define Q_UPDATE_METHOD %d\n" % change_to_int("q_table_update_method")
-        if list_of_lines[i].startswith("#define SPATIAL_DATA_STRUCTURE_TYPE "):
-            list_of_lines[i] = "#define SPATIAL_DATA_STRUCTURE_TYPE %d\n" % change_to_int("spatial_data_structure_type")
-        if list_of_lines[i].startswith("#define DIRECTIONAL_DATA_STRUCTURE_TYPE "):
-            list_of_lines[i] = "#define DIRECTIONAL_DATA_STRUCTURE_TYPE %d\n" % change_to_int("directional_data_structure_type")
-        if list_of_lines[i].startswith("#define DIRECTION_UV_MAPPING_TYPE "):
-            list_of_lines[i] = "#define DIRECTION_UV_MAPPING_TYPE %d\n" % change_to_int("directional_mapping_method")
-        if list_of_lines[i].startswith("#define USE_NEXT_EVENT_ESTIMATION "):
-            list_of_lines[i] = "#define USE_NEXT_EVENT_ESTIMATION %d\n" % (1 if kwargs.get("use_next_event_estimation", False) else 0)
-
-    with open(config_file_path, "w") as f:
-        f.writelines(list_of_lines)
-
-
 class OptiXSceneContext:
     def __init__(self, context: Context):
         """
@@ -103,9 +77,6 @@ class OptiXSceneContext:
 
         program_dictionary["any_hit_shadow"] = Program(any_hit_hit_program, 'any_hit_shadow')
         program_dictionary["any_hit_shadow_cutout"] = Program(any_hit_hit_program, 'any_hit_shadow_cutout')
-
-        program_dictionary['quad_tree_updater'] = Program('optix/radiance_record/quad_tree_updater.cu', 'quad_tree_updater')
-        program_dictionary['binary_tree_updater'] = Program('optix/radiance_record/binary_tree_updater.cu', 'spatial_binary_tree_updater')
 
         self.program_dictionary = program_dictionary
 
