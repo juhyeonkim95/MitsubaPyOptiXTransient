@@ -1,5 +1,0 @@
-{
-  "scene_name": "simple-cube",
-  "scene_file_path": "../scenes/simple-cube/scene_v0.6.xml",
-  "include": "../../common.json"
-}
