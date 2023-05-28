@@ -5,14 +5,16 @@ Please also check main code for paper at [here](https://github.com/awreed/Neural
 
 ![teasure](assets/teaser_v1.0.png)
 
-## Renderer overview
+## Renderer Overview
 
-This is a custom python, OptiX based transient path tracing engine that renders Mitsuba formatted scenes which is built based on my previous custom [renderer](https://github.com/juhyeonkim95/MitsubaPyOptiX).
+This is a custom python, GPU(OptiX)-based transient path tracing engine that renders Mitsuba formatted scenes which is built based on my previous custom [renderer](https://github.com/juhyeonkim95/MitsubaPyOptiX).
 
 We implemented transient rendering using atomic operation on CUDA.
 
-## Usage
+## Install
+Please refer [here](https://github.com/juhyeonkim95/MitsubaPyOptiX) to install the renderer.
 
+## Usage
 ```
 python main_transient.py ../configs_transient_example/bunny.json
 ```
