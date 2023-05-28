@@ -1,0 +1,5 @@
+{
+  "scene_name": "cornell-box",
+  "scene_file_path": "../scenes/cornell-box-point/scene_v0.6.xml",
+  "include": "../../common.json"
+}

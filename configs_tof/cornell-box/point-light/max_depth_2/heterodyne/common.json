@@ -1,0 +1,4 @@
+{
+  "homodyne": true,
+  "include": "../common.json"
+}
